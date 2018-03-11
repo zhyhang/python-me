@@ -6,7 +6,7 @@ Created on 2018年3月11日
 @author: zhyhang
 '''
 
-# guess the nuber through input
+# guess the number through input
 import random
 
 secretNumber=random.randint(1,20)
