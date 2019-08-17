@@ -6,6 +6,9 @@
 # idea
 .idea/
 
+#local
+org/yanghuang/util/work_ipy
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -107,3 +110,4 @@ ENV/
 
 # mypy
 .mypy_cache/
+/org/yanghuang/util/work_ipy/
