@@ -62,7 +62,7 @@ def dataLength(recvData: bytes) -> int:
 
 
 def lengthStoreBytes(dataLen: int) -> int:
-    return math.ceil(math.log(dataLen, 128))
+    return math.ceil(math.log(dataLen, 127))
 
 
 # 完整读取所有数据
