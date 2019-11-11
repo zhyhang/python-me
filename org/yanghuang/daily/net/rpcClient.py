@@ -14,7 +14,7 @@ def buildSendData(srvIndex: int) -> bytes:
     sendData.append(0)
     sendData.append(0)
     sendData.append(1)
-    # 2个字节，irpc service中index值
+    # 2个字节，rpc service中index值
     sendData.append((serviceIndex >> 8) & 0xff)
     sendData.append(serviceIndex & 0xff)
     # 1个字节，data type，0代表无data数据
