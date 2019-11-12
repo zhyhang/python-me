@@ -65,19 +65,28 @@ def lengthStoreBytes(dataLen: int) -> int:
     return math.ceil(math.log(dataLen, 127))
 
 
-# 完整读取所有数据
-def readDataText(sock: socket, srvIndex: int) -> str:
-    recvData = bytearray()
-    recvPacket = sock.recv(2048)
-    recvData.extend(recvPacket)
-    if not checkValidRecv(recvPacket, srvIndex):
-        return ''
-    dataLen = dataLength(recvData)
+# 完整读取所有数据，包括头信息，放在recvData参数中，返回数据正文长度
+def readAllData(sock: socket, srvIndex: int, recvData: bytearray) -> int:
+    headerPacket = sock.recv(2048)
+    if not checkValidRecv(headerPacket, srvIndex):
+        raise Exception('invalid data header!')
+    recvData.extend(headerPacket)
+    dataLen = dataLength(headerPacket)
     lenBytes = lengthStoreBytes(dataLen)
     totalLen = dataLen + 9 + lenBytes
     while len(recvData) < totalLen:
         recvData.extend(sock.recv(2048))
-    return str(recvData[9 + lenBytes:], encoding='UTF-8')
+    return dataLen
+
+
+# 读取消息正文，且变为utf8文本返回，若server端异常，则抛出Exception('server exception',server exception msg)
+def readDataText(sock: socket, srvIndex: int) -> str:
+    recvData = bytearray()
+    dataLen = readAllData(sock, srvIndex, recvData)
+    retText = str(recvData[len(recvData) - dataLen:], encoding='UTF-8')
+    if excepted(recvData):
+        raise Exception('server exception', retText)
+    return retText
 
 
 if __name__ == '__main__':
@@ -88,9 +97,11 @@ if __name__ == '__main__':
         sock.send(buildSendData(serviceIndex))
         recvDataText = readDataText(sock, serviceIndex)
         print(recvDataText)
-        # print(checkValidRecv(recvData, 125))
-        # print(excepted(recvData))
-        # print(len(recvData))
-        # print(dataLength(recvData))
+    except Exception as e:
+        if len(e.args) == 2 and 'server exception' == e.args[0]:
+            print('server error:')
+            print(e.args[1])
+        else:
+            raise
     finally:
         sock.close()
