@@ -47,9 +47,9 @@ def sortPrint(a: list):
         a1 = a.copy()
         a2 = a.copy()
     quickSort(a1)
-    print('list after nest quick sort:', a1)
+    print('list after recursion quick sort:', a1)
     quickSortIter(a2)
-    print('list after loop quick sort:', a2)
+    print('list after iteration quick sort:', a2)
 
 
 if __name__ == '__main__':
