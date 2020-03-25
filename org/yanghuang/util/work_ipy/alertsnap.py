@@ -91,7 +91,7 @@ def findFileAlerts(alerts:list,log_file:TextIO,prev_time_field:str,after_lines:i
         latest_time_field=time_field
         if time_field <= prev_time_field:
             continue
-        if isFatalLine(line_splits) or isErrorLine(line_splits) or isExceptionLine(line_splits):
+        if isFatalLine(line_splits) or isErrorLine(line_splits):
             msg_line_count = 1
             alert_msg = dict()
             alert_msg[alertJsonKeyTs] = time_field

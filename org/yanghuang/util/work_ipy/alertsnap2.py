@@ -1,11 +1,15 @@
 # coding=UTF-8
-
+'''
+- extract alert lines from log file
+- use findAlerts(file_path, prev_time_field, after_lines=2) to snap alerts in logfile
+- use saveAlerts(log_file_path, alerts) to save alerts to tmp hidden file
+- use readPreSavedAlerts(log_file_path) to read last saved alerts from tmp hidden file
+'''
 import json
-import re
-from os.path import expanduser
 import os
 import io
-from typing import TextIO
+import re
+from os.path import expanduser
 
 # 判断日期时间开头字串的正则表达式
 dateTimePattern = re.compile('\[\d\d\d\d-\d\d-\d\d')
@@ -15,12 +19,13 @@ fieldSeparator = ']['
 alertJsonKeyTs = 'ts'
 alertJsonKeyMsg = 'message'
 # alert信息关键字
-alertLevelFatal='FATAL'
-alertLevelError='ERROR'
-alertLevelWarn='WARN'
-alertLevelINFO='INFO'
-alertKeywordsException='exception'
-alertKeywordsFatalError='fatal error'
+alertLevelFatal = 'FATAL'
+alertLevelError = 'ERROR'
+alertLevelWarn = 'WARN'
+alertLevelINFO = 'INFO'
+alertKeywordsException = 'exception'
+alertKeywordsFatalError = 'fatal error'
+
 
 def isTimeLine(line_splits):
     if line_splits == None or len(line_splits) == 0:
@@ -74,11 +79,12 @@ def isFatalLine(line_splits):
     return False
 
 
-def findFileAlerts(alerts,log_file,prev_time_field,after_lines):
+def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
     msg_line_count = 0
+    latest_time_field = ''
     for line in log_file:
         line_splits = line.split(fieldSeparator)
-        if msg_line_count > 0 and msg_line_count < after_lines+1:
+        if msg_line_count > 0 and msg_line_count < after_lines + 1:
             if not isTimeLine(line_splits):
                 msg_line_count += 1
                 alerts[len(alerts) - 1][alertJsonKeyMsg] += line
@@ -87,14 +93,17 @@ def findFileAlerts(alerts,log_file,prev_time_field,after_lines):
         if not isTimeLine(line_splits):
             continue
         time_field = line_splits[0]
+        latest_time_field = time_field
         if time_field <= prev_time_field:
             continue
-        if isFatalLine(line_splits) or isErrorLine(line_splits) or isExceptionLine(line_splits):
+        if isFatalLine(line_splits) or isErrorLine(line_splits):
             msg_line_count = 1
             alert_msg = dict()
             alert_msg[alertJsonKeyTs] = time_field
             alert_msg[alertJsonKeyMsg] = line
             alerts.append(alert_msg)
+    alerts.append({'ts': latest_time_field})
+
 
 def findAlerts(file_path, prev_time_field, after_lines=2):
     '''
@@ -102,48 +111,57 @@ def findAlerts(file_path, prev_time_field, after_lines=2):
     :param file_path: 日志文件路径
     :param prev_time_field: 上次已经报警的最后时间字串，格式为'[2020-03-24 20:21:22.023'
     :param after_lines: 报警行，再取后续行数
-    :return: 报警信息列表，列表元素为：['ts']=报警时间，格式为'[2020-03-24 20:21:22.023';['message']=详细信息
+    :return: 报警信息列表，列表元素为：['ts']=报警时间，格式为'[2020-03-24 20:21:22.023';['message']=详细信息。
+    最后一条数据不带message信息，只带ts，用于标识日志文件扫描到的时间点，就算没有报警也有这条数据。
     '''
     alerts = list()
-    with io.open(file_path,encoding='utf-8') as log_file:
-        prev_time_str=''
-        if prev_time_field!=None:
-            prev_time_str=prev_time_field
-        findFileAlerts(alerts,log_file,prev_time_str,after_lines)
+    with io.open(file_path, encoding='utf-8') as log_file:
+        prev_time_str = ''
+        if prev_time_field != None:
+            prev_time_str = prev_time_field
+        findFileAlerts(alerts, log_file, prev_time_str, after_lines)
     return alerts
 
-def buildFileFullPath(log_file_path):
-    home=expanduser('~')
-    return home+'/'+'.alert_log.' + log_file_path.replace('/', '-').replace('\\', '_').replace(':','.')
 
-def savePreAlerts(file_path, alerts):
-    alert_file_path = buildFileFullPath(file_path)
-    with io.open(alert_file_path,'w',encoding='utf-8') as storedFile:
+def buildSavedFileFullPath(log_file_path):
+    home = expanduser('~')
+    return home + '/' + '.alert_log.' + log_file_path.replace('/', '-').replace('\\', '_').replace(':', '.')
+
+
+def saveAlerts(log_file_path, alerts):
+    '''
+    保存alerts信息到隐藏的存储文件（文件名，根据log_file_path自动生成）
+    :param log_file_path: 原始日志所在的文件全路径
+    :param alerts: 从日志中抽取出的报警信息list，最后一条为上次扫描到的时间点，不带报警信息。
+    :return: 无
+    '''
+    alert_file_path = buildSavedFileFullPath(log_file_path)
+    with io.open(alert_file_path, 'wb') as store_file:
         try:
-            storedFile.write(json.dumps(alerts).encode('utf-8'))
-            #json.dump(alerts, storedFile)
+            store_file.write(json.dumps(alerts, ensure_ascii=False).encode('utf-8'))
         except Exception as e:
             print(e)
 
-def readFromFile(file_path):
-    alert_file_path = buildFileFullPath(file_path)
+
+def readPreSavedAlerts(log_file_path):
+    '''
+    从保存的隐藏文件中（文件名，根据log_file_path自动生成）读取上次报警信息
+    :param log_file_path: 原始日志所在的文件全路径
+    :return: 报警信息list，最后一条为上次扫描到的时间点，不带报警信息。
+    '''
+    alert_file_path = buildSavedFileFullPath(log_file_path)
     if os.path.exists(alert_file_path):
-        with io.open(alert_file_path,'r',encoding='utf-8') as storedFile:
+        with io.open(alert_file_path, 'r', encoding='utf-8') as store_file:
             try:
-                return json.load(storedFile)
+                return json.load(store_file)
             except Exception as e:
                 print(e)
     return dict()
 
+
 if __name__ == '__main__':
-    
-    line = '[2020-03-24][ERROR][ID]: fatal error, NullPointException'
-    print(isExceptionLine(line.split('][')))
-    file_path='/data/temp/alert_log.txt'
-    alerts=findAlerts(file_path,'',3)
-    savePreAlerts(file_path,alerts)
+    file_path = '/temp/alert_log.txt'
+    alerts = findAlerts(file_path, '', 3)
+    saveAlerts(file_path, alerts)
+    # alerts1=readPreSavedAlerts(file_path)
     print(alerts)
-
-
-
-
