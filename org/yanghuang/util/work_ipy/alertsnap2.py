@@ -11,6 +11,8 @@ import io
 import re
 from os.path import expanduser
 
+# 最大内存持有报警条数，避免内存占用过多
+maxAlertsInMem = 1000
 # 判断日期时间开头字串的正则表达式
 dateTimePattern = re.compile('\[\d\d\d\d-\d\d-\d\d')
 # 日志行的字段分割字串
@@ -102,6 +104,8 @@ def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
             alert_msg[alertJsonKeyTs] = time_field
             alert_msg[alertJsonKeyMsg] = line
             alerts.append(alert_msg)
+            if len(alerts) > maxAlertsInMem:
+                alerts.pop(0)
     alerts.append({'ts': latest_time_field})
 
 
