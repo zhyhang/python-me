@@ -20,12 +20,10 @@ import alertsnap2
 import sys
 import json
 import urllib2
-
-# json的header
-headers = {'Content-Type': 'application/json'}
+import urllib
 
 # 上汽的参数名
-postParamName = 'eventRequest='
+serviceUrlParamName = 'eventRequest'
 
 
 def createAlertMsg(alert, host_name, host_ip):
@@ -45,7 +43,7 @@ if __name__ == '__main__':
     log_file_path = sys.argv[1]
     host_name = sys.argv[2]
     host_ip = sys.argv[3]
-    post_url = sys.argv[4]
+    service_url = sys.argv[4]
     max_alert_num = 10
     if len(sys.argv) >= 6:
         max_alert_num = int(sys.argv[5])
@@ -58,22 +56,23 @@ if __name__ == '__main__':
     print(pre_time_field)
     alerts = alertsnap2.findAlerts(log_file_path, pre_time_field)
     # 根据参数，生成最多报警列表
-    post_alerts = list()
+    sending_alerts = list()
     if len(alerts) <= max_alert_num + 1:
-        post_alerts = alerts
+        sending_alerts = alerts
     else:
         for i in range(len(alerts) - (max_alert_num + 1), len(alerts)):
-            post_alerts.append(alerts[i])
+            sending_alerts.append(alerts[i])
     # 发送报警信息到指定url
     try:
-        for a in post_alerts:
+        for a in sending_alerts:
             if 'message' in a.keys():
                 msg = createAlertMsg(a, host_name, host_ip)
-                msg_json_str = (postParamName + json.dumps(msg, ensure_ascii=False)).encode("utf-8")
-                request = urllib2.Request(url=post_url, headers=headers, data=msg_json_str)
-                response = urllib2.urlopen(request)
+                msg_with_query_para = dict()
+                msg_with_query_para[serviceUrlParamName] = json.dumps(msg, ensure_ascii=False).encode("utf-8")
+                full_url = service_url + '?' + urllib.urlencode(msg_with_query_para)
+                response = urllib2.urlopen(urllib2.Request(url=full_url))
                 response.read()
         # 发送成功保存消息，下次扫描从新时间点开始
-        alertsnap2.saveAlerts(log_file_path, post_alerts)
+        alertsnap2.saveAlerts(log_file_path, sending_alerts)
     except Exception as e:
         print(e)
