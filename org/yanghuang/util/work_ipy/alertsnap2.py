@@ -7,7 +7,6 @@
 '''
 import json
 import os
-import io
 import re
 from os.path import expanduser
 import tailer
@@ -100,7 +99,7 @@ def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
             continue
         time_field = line_splits[0]
         latest_time_field = time_field
-        if time_field <= prev_time_field:
+        if time_field <= prev_time_field.encode(encoding='utf-8'):
             continue
         if isFatalLine(line_splits) or isErrorLine(line_splits):
             msg_line_count = 1
@@ -123,7 +122,7 @@ def findAlerts(file_path, prev_time_field, after_lines=2):
     最后一条数据不带message信息，只带ts，用于标识日志文件扫描到的时间点，就算没有报警也有这条数据。
     '''
     alerts = list()
-    with io.open(file_path, 'r', encoding='utf-8') as log_file:
+    with open(file_path, 'r') as log_file:
         prev_time_str = ''
         if prev_time_field != None:
             prev_time_str = prev_time_field
@@ -144,9 +143,9 @@ def saveAlerts(log_file_path, alerts):
     :return: 无
     '''
     alert_file_path = buildSavedFileFullPath(log_file_path)
-    with io.open(alert_file_path, 'wb') as store_file:
+    with open(alert_file_path, 'w') as store_file:
         try:
-            store_file.write(json.dumps(alerts, ensure_ascii=False).encode(encoding='utf-8'))
+            json.dump(alerts, store_file)
         except Exception as e:
             print(e)
 
@@ -159,7 +158,7 @@ def readPreSavedAlerts(log_file_path):
     '''
     alert_file_path = buildSavedFileFullPath(log_file_path)
     if os.path.exists(alert_file_path):
-        with io.open(alert_file_path, 'r', encoding='utf-8') as store_file:
+        with open(alert_file_path, 'r') as store_file:
             try:
                 return json.load(store_file)
             except Exception as e:
@@ -173,7 +172,7 @@ if __name__ == '__main__':
     saveAlerts(file_path, alerts)
     alerts1 = readPreSavedAlerts(file_path)
     print(alerts)
-    print(json.dumps(alerts1, ensure_ascii=False))
+    print(json.dumps(alerts1))
     for a in alerts1:
         if 'message' in a.keys():
             print(a['message'])

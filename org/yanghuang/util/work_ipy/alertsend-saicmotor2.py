@@ -70,7 +70,7 @@ if __name__ == '__main__':
             if 'message' in a.keys():
                 msg = createAlertMsg(a, host_name, host_ip)
                 msg_with_query_para = dict()
-                msg_with_query_para[serviceUrlParamName] = json.dumps(msg, ensure_ascii=False).encode('utf-8')
+                msg_with_query_para[serviceUrlParamName] = json.dumps(msg)
                 full_url = service_url + '?' + urllib.urlencode(msg_with_query_para)
                 response = urllib2.urlopen(urllib2.Request(url=full_url))
                 response.read()
