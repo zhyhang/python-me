@@ -10,9 +10,12 @@ import os
 import io
 import re
 from os.path import expanduser
+import tailer
 
 # 最大内存持有报警条数，避免内存占用过多
 maxAlertsInMem = 1000
+# 最多查找日志文件尾部行数，避免过大文件，扫描时间过长
+maxTailLineNum = 500000
 # 判断日期时间开头字串的正则表达式
 dateTimePattern = re.compile('\[\d\d\d\d-\d\d-\d\d')
 # 日志行的字段分割字串
@@ -82,9 +85,10 @@ def isFatalLine(line_splits):
 
 
 def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
+    lines = tailer.tail(log_file, maxTailLineNum)
     msg_line_count = 0
     latest_time_field = ''
-    for line in log_file:
+    for line in lines:
         line_splits = line.split(fieldSeparator)
         if msg_line_count > 0 and msg_line_count < after_lines + 1:
             if not isTimeLine(line_splits):
@@ -119,7 +123,7 @@ def findAlerts(file_path, prev_time_field, after_lines=2):
     最后一条数据不带message信息，只带ts，用于标识日志文件扫描到的时间点，就算没有报警也有这条数据。
     '''
     alerts = list()
-    with io.open(file_path, encoding='utf-8') as log_file:
+    with io.open(file_path, 'r', encoding='utf-8') as log_file:
         prev_time_str = ''
         if prev_time_field != None:
             prev_time_str = prev_time_field
@@ -142,7 +146,7 @@ def saveAlerts(log_file_path, alerts):
     alert_file_path = buildSavedFileFullPath(log_file_path)
     with io.open(alert_file_path, 'wb') as store_file:
         try:
-            store_file.write(json.dumps(alerts, ensure_ascii=False).encode('utf-8'))
+            store_file.write(json.dumps(alerts, ensure_ascii=False).encode(encoding='utf-8'))
         except Exception as e:
             print(e)
 
@@ -169,3 +173,7 @@ if __name__ == '__main__':
     saveAlerts(file_path, alerts)
     alerts1 = readPreSavedAlerts(file_path)
     print(alerts)
+    print(json.dumps(alerts1, ensure_ascii=False))
+    for a in alerts1:
+        if 'message' in a.keys():
+            print(a['message'])
