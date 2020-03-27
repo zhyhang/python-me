@@ -22,8 +22,13 @@ send alert to monitor service
 import alertsnap2
 import sys
 import json
-import urllib2
-import urllib
+
+if sys.version_info < (3,):
+    import urllib2
+    import urllib
+else:
+    import urllib.request
+    import urllib.parse
 
 # 上汽的参数名
 serviceUrlParamName = 'eventRequest'
@@ -39,6 +44,18 @@ def createAlertMsg(alert, host_name, host_ip):
     msg['address'] = host_ip
     msg['additional'] = alert['message']
     return msg
+
+
+def requestService2():
+    full_url = service_url + '?' + urllib.urlencode(msg_with_query_para)
+    response = urllib2.urlopen(urllib2.Request(url=full_url))
+    response.read()
+
+
+def requestService3():
+    full_url = service_url + '?' + urllib.parse.urlencode(msg_with_query_para)
+    response = urllib.request.urlopen(url=full_url)
+    response.read()
 
 
 if __name__ == '__main__':
@@ -71,9 +88,10 @@ if __name__ == '__main__':
                 msg = createAlertMsg(a, host_name, host_ip)
                 msg_with_query_para = dict()
                 msg_with_query_para[serviceUrlParamName] = json.dumps(msg)
-                full_url = service_url + '?' + urllib.urlencode(msg_with_query_para)
-                response = urllib2.urlopen(urllib2.Request(url=full_url))
-                response.read()
+                if sys.version_info < (3,):
+                    requestService2()
+                else:
+                    requestService3()
         # 发送成功保存消息，下次扫描从新时间点开始
         alertsnap2.saveAlerts(log_file_path, sending_alerts)
     except Exception as e:

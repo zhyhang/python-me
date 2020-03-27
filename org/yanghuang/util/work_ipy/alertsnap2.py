@@ -8,6 +8,7 @@
 import json
 import os
 import re
+import sys
 from os.path import expanduser
 import tailer
 
@@ -84,6 +85,8 @@ def isFatalLine(line_splits):
 
 
 def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
+    if prev_time_field == None:
+        prev_time_field = ''
     lines = tailer.tail(log_file, maxTailLineNum)
     msg_line_count = 0
     latest_time_field = ''
@@ -99,7 +102,7 @@ def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
             continue
         time_field = line_splits[0]
         latest_time_field = time_field
-        if time_field <= prev_time_field.encode(encoding='utf-8'):
+        if time_field <= prev_time_field:
             continue
         if isFatalLine(line_splits) or isErrorLine(line_splits):
             msg_line_count = 1
@@ -122,11 +125,12 @@ def findAlerts(file_path, prev_time_field, after_lines=2):
     最后一条数据不带message信息，只带ts，用于标识日志文件扫描到的时间点，就算没有报警也有这条数据。
     '''
     alerts = list()
-    with open(file_path, 'r') as log_file:
-        prev_time_str = ''
-        if prev_time_field != None:
-            prev_time_str = prev_time_field
-        findFileAlerts(alerts, log_file, prev_time_str, after_lines)
+    if sys.version_info < (3,):
+        with open(file_path, 'r') as log_file:
+            findFileAlerts(alerts, log_file, prev_time_field, after_lines)
+    else:
+        with open(file_path, 'r', encoding='utf-8') as log_file:
+            findFileAlerts(alerts, log_file, prev_time_field, after_lines)
     return alerts
 
 
