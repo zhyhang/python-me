@@ -164,8 +164,8 @@ def readPreSavedAlerts(log_file_path):
 
 
 if __name__ == '__main__':
-    file_path = '/temp/alert_log.txt'
+    file_path = '/data/temp/alert_log.txt'
     alerts = findAlerts(file_path, '', 3)
     saveAlerts(file_path, alerts)
-    alerts1=readPreSavedAlerts(file_path)
+    alerts1 = readPreSavedAlerts(file_path)
     print(alerts)

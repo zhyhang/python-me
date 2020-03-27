@@ -3,10 +3,11 @@
 '''
 send alert to monitor service
 
-- deploy tailer.py alertsnap2.py and alertsend-saicmotor2.py in /data/dmp/monitor/
+- deploy tailer.py, alertsnap2.py and alertsend-saicmotor2.py to a dir e.g. /data/dmp/monitor/
 
 - crontab -e
 - */10 * * * * /usr/bin/python2.7 /data/dmp/monitor/alertsend-saicmotor2.py log_file_full_path host_name host_ip service_url
+- every 10 minute to scan the log file from last scanned timestamp in tail 500000 lines
 - default max send alerts is 10, can specify it at last parameter in above command
 
 - default scan max tail 500000 lines (in alertsnap2.py)
@@ -71,7 +72,6 @@ if __name__ == '__main__':
                 msg_with_query_para = dict()
                 msg_with_query_para[serviceUrlParamName] = json.dumps(msg, ensure_ascii=False).encode('utf-8')
                 full_url = service_url + '?' + urllib.urlencode(msg_with_query_para)
-                print(full_url)
                 response = urllib2.urlopen(urllib2.Request(url=full_url))
                 response.read()
         # 发送成功保存消息，下次扫描从新时间点开始
