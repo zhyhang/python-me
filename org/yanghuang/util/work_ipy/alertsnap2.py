@@ -98,7 +98,7 @@ def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
         if msg_line_count > 0 and msg_line_count < after_lines + 1:
             if not isTimeLine(line_splits):
                 msg_line_count += 1
-                alerts[len(alerts) - 1][alertJsonKeyMsg] += line
+                alerts[len(alerts) - 1][alertJsonKeyMsg] += ('\n' + line)
             else:
                 msg_line_count = 0
         if not isTimeLine(line_splits):
