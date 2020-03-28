@@ -62,13 +62,21 @@ def isInfoLine(line_splits):
     return isLogLevelLine(line_splits, alertLevelINFO)
 
 
-def isExceptionLine(line_splits):
-    if line_splits == None or len(line_splits) < 3:
+def containKeywords(line_splits, keywords):
+    if line_splits == None or len(line_splits) < 4:
         return False
-    for i in range(2, len(line_splits)):
-        if alertKeywordsException in line_splits[i].lower():
-            return True
+    for i in range(3, len(line_splits)):
+        try:
+            start_index = line_splits[i].index(']')
+            if keywords in line_splits[i][start_index:].lower():
+                return True
+        except:
+            pass
     return False
+
+
+def isExceptionLine(line_splits):
+    return containKeywords(line_splits, alertKeywordsException)
 
 
 def isFatalLine(line_splits):
@@ -76,12 +84,7 @@ def isFatalLine(line_splits):
     isFatal = isLogLevelLine(line_splits, alertLevelFatal)
     if isFatal:
         return True
-    if line_splits == None or len(line_splits) < 3:
-        return False
-    for i in range(2, len(line_splits)):
-        if alertKeywordsFatalError in line_splits[i].lower():
-            return True
-    return False
+    return containKeywords(line_splits, alertKeywordsFatalError)
 
 
 def findFileAlerts(alerts, log_file, prev_time_field, after_lines):
@@ -177,6 +180,6 @@ if __name__ == '__main__':
     alerts1 = readPreSavedAlerts(file_path)
     print(alerts)
     print(json.dumps(alerts1))
-    for a in alerts1:
+    for a in alerts:
         if 'message' in a.keys():
             print(a['message'])
