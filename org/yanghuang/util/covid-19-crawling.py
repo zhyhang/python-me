@@ -1,3 +1,6 @@
+# coding=UTF-8
+import codecs
+import sys
 from datetime import datetime, timedelta
 import json
 import urllib.request
@@ -42,8 +45,7 @@ if __name__ == '__main__':
     full_url = 'https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5&callback=&_=%d' % int(time.time() * 1000)
     response = urllib.request.urlopen(url=full_url)
     result = json.loads(response.read())
-    # 保存到文件
-    # 每小时最多保存一个文件
+    # 保存到文件，每小时最多保存一个文件
     current_hour_human = datetime.today().strftime('%Y%m%d-%H')
     json_file_path = "/data/covid-19-county-" + current_hour_human + ".json"
     with open(json_file_path, 'w') as json_file:
@@ -51,12 +53,17 @@ if __name__ == '__main__':
     provinces = json.loads(result['data'])['areaTree'][0]['children']
     yesterday_yyyymmdd = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
     province_stats_file_path = "/data/covid-19-province-" + current_hour_human + ".txt"
-    with open(province_stats_file_path, 'w') as province_file:
+    if sys.stdout.encoding != 'UTF-8':
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    if sys.stderr.encoding != 'UTF-8':
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+    with open(province_stats_file_path, 'w', encoding='utf-8') as province_file:
         province_file.write('id\t省\t日期\t确诊病例\t死亡病例\t治愈病例\n')
         for province in provinces:
             total_stat = province['total']
             province_name = province['name']
             province_id = 0
+            # 找到完整的地域名称和id
             for geo in geo_dict:
                 if province_name in geo['name']:
                     province_id = geo['id']
