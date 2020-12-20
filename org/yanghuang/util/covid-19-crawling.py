@@ -1,10 +1,13 @@
-# coding=UTF-8
-import codecs
-import sys
 from datetime import datetime, timedelta
 import json
 import urllib.request
 import time
+import os
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
+
+xlsx_header = ['id', '省', '日期', '确诊病例', '死亡病例', '治愈病例']
 
 geo_dict = [{'id': 1156420000, 'name': '湖北省'},
             {'id': 1156440000, 'name': '广东省'},
@@ -41,35 +44,58 @@ geo_dict = [{'id': 1156420000, 'name': '湖北省'},
             {'id': 1156630000, 'name': '青海省'},
             {'id': 1156540000, 'name': '西藏自治区'}]
 
+
+def make_xlsx(filename: str, sheet_name: str) -> (Workbook, Worksheet):
+    if os.path.exists(filename):
+        book = openpyxl.load_workbook(filename)
+    else:
+        book = openpyxl.Workbook()
+    if sheet_name in book.sheetnames:
+        del book[sheet_name]
+    sheet = book.create_sheet(sheet_name)
+    return book, sheet
+
+
 if __name__ == '__main__':
     full_url = 'https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5&callback=&_=%d' % int(time.time() * 1000)
+    current_hour_human = datetime.today().strftime('%Y%m%d-%H')
+    current_day_human = datetime.today().strftime('%Y%m%d')
+    json_file_path = "/data/covid-19-county-" + current_hour_human + ".json"
+    province_stats_file_path = "/data/covid-19-province-" + current_hour_human + ".txt"
+    province_xlsx_file_path = "/data/covid-19-province.xlsx"
+    # save to file every hour
     response = urllib.request.urlopen(url=full_url)
     result = json.loads(response.read())
-    # 保存到文件，每小时最多保存一个文件
-    current_hour_human = datetime.today().strftime('%Y%m%d-%H')
-    json_file_path = "/data/covid-19-county-" + current_hour_human + ".json"
     with open(json_file_path, 'w') as json_file:
         json.dump(result, json_file)
     provinces = json.loads(result['data'])['areaTree'][0]['children']
     yesterday_yyyymmdd = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-    province_stats_file_path = "/data/covid-19-province-" + current_hour_human + ".txt"
-    if sys.stdout.encoding != 'UTF-8':
-        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-    if sys.stderr.encoding != 'UTF-8':
-        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
-    with open(province_stats_file_path, 'w', encoding='utf-8') as province_file:
-        province_file.write('id\t省\t日期\t确诊病例\t死亡病例\t治愈病例\n')
-        for province in provinces:
-            total_stat = province['total']
-            province_name = province['name']
-            province_id = 0
-            # 找到完整的地域名称和id
-            for geo in geo_dict:
-                if province_name in geo['name']:
-                    province_id = geo['id']
-                    province_name = geo['name']
-                    break
-            print(province_id, province_name, yesterday_yyyymmdd, total_stat['confirm'], total_stat['dead'],
-                  total_stat['heal'], sep='\t', file=province_file)
-            print(province_id, province_name, yesterday_yyyymmdd, total_stat['confirm'], total_stat['dead'],
-                  total_stat['heal'], sep='\t')
+    unsorted_stats = list()
+    # generate table data
+    for province in provinces:
+        total_stat = province['total']
+        province_name = province['name']
+        province_id = 0
+        for geo in geo_dict:
+            if province_name in geo['name']:
+                province_id = geo['id']
+                province_name = geo['name']
+                break
+        row = (province_id, province_name, yesterday_yyyymmdd, total_stat['confirm'], total_stat['dead'],
+               total_stat['heal'])
+        unsorted_stats.append(row)
+    ## sort and save to excel(xlsx)
+    sorted_stats = sorted(unsorted_stats, key=lambda stats: stats[3], reverse=True)
+    xlsx_book_sheet = make_xlsx(province_xlsx_file_path, current_day_human)
+    xlsx_book = xlsx_book_sheet[0]
+    xlsx_sheet = xlsx_book_sheet[1]
+    xlsx_sheet.append(xlsx_header)
+    with open(province_stats_file_path, 'w') as province_file:
+        province_file.write('\t'.join(map(str,xlsx_header))+'\n')
+        for r in sorted_stats:
+            xlsx_sheet.append(r)
+            printed_row='\t'.join(map(str, r))
+            province_file.write(printed_row+'\n')
+            print(printed_row)
+    xlsx_book.save(province_xlsx_file_path)
+    xlsx_book.close()
